@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -12,8 +14,6 @@ import (
 
 // Contant val
 const awsHome = "AWS_HOME"
-
-var verbose = false
 
 var flags = []cli.Flag{
 	cli.BoolFlag{
@@ -39,14 +39,19 @@ type ExtractOptions struct {
 	profile         string
 }
 
+func setup(ctx *cli.Context) error {
+	if !ctx.Bool("verbose") {
+		log.SetOutput(ioutil.Discard)
+	}
+	return nil
+}
+
 func (exo *ExtractOptions) process() (map[string]string, error) {
 	awsHome := os.Getenv(awsHome)
 	p := path.Join(awsHome, exo.credentialsFile)
 
-	if verbose {
-		fmt.Printf("Inspecting file: %s\n", p)
-		fmt.Printf("Extracting profile [%s]\n", exo.profile)
-	}
+	log.Printf("Inspecting file: %s\n", p)
+	log.Printf("Extracting profile [%s]\n", exo.profile)
 
 	cfg, err := ini.Load(p)
 
@@ -68,12 +73,12 @@ func (exo *ExtractOptions) process() (map[string]string, error) {
 // CmdProcess extracts the AWS Keys from the profile of the of the specified
 // credentials file.  These values will then be set as the environment vaiables
 func CmdProcess(c *cli.Context) {
-	verbose = c.Bool("verbose")
+
 	fp := ExtractOptions{c.String("file"), c.String("profile")}
 	m, err := fp.process()
 
 	if nil != err {
-		panic(err)
+		log.Panic(err)
 	}
 
 	for k, v := range m {
@@ -81,7 +86,7 @@ func CmdProcess(c *cli.Context) {
 		fmt.Printf("export %s=\"%v\"\n", k, v)
 		err := os.Setenv(k, v)
 		if nil != err {
-			fmt.Println("Ooopsy... there was an error")
+			log.Panic(err)
 		}
 	}
 }
@@ -91,6 +96,7 @@ func main() {
 	app.Name = "aws-env"
 	app.Usage = "extract AWS Secret Key Id and Access Keys"
 	app.Flags = flags
+	app.Before = setup
 	app.Action = CmdProcess
 
 	app.Run(os.Args)
