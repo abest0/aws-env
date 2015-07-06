@@ -12,9 +12,6 @@ import (
 	"gopkg.in/ini.v1"
 )
 
-// Contant val
-const awsHome = "AWS_HOME"
-
 var flags = []cli.Flag{
 	cli.BoolFlag{
 		Name:  "verbose",
@@ -30,13 +27,18 @@ var flags = []cli.Flag{
 		Value: "default",
 		Usage: "profile to extract from aws credentials file",
 	},
+	cli.StringFlag{
+		Name:   "aws-home",
+		Usage:  "location of aws home",
+		EnvVar: "AWS_HOME",
+	},
 }
 
 // ExtractOptions are the options that will used to pull data out
 // out of the credentials file
 type ExtractOptions struct {
-	credentialsFile string
-	profile         string
+	credentialPath string
+	profile        string
 }
 
 func setup(ctx *cli.Context) error {
@@ -47,13 +49,11 @@ func setup(ctx *cli.Context) error {
 }
 
 func (exo *ExtractOptions) process() (map[string]string, error) {
-	awsHome := os.Getenv(awsHome)
-	p := path.Join(awsHome, exo.credentialsFile)
 
-	log.Printf("Inspecting file: %s\n", p)
+	log.Printf("Inspecting file: %s\n", exo.credentialPath)
 	log.Printf("Extracting profile [%s]\n", exo.profile)
 
-	cfg, err := ini.Load(p)
+	cfg, err := ini.Load(exo.credentialPath)
 
 	if nil != err {
 		fmt.Println("An error occurred loading the file")
@@ -72,9 +72,20 @@ func (exo *ExtractOptions) process() (map[string]string, error) {
 
 // CmdProcess extracts the AWS Keys from the profile of the of the specified
 // credentials file.  These values will then be set as the environment vaiables
-func CmdProcess(c *cli.Context) {
+func CmdProcess(ctx *cli.Context) {
 
-	fp := ExtractOptions{c.String("file"), c.String("profile")}
+	awsHome := ctx.String("aws-home")
+	if "" == awsHome {
+		fmt.Fprintln(os.Stderr, "Environment variable [$AWS_HOME] is not set. Is the aws-cli installed? If not, install it or use --aws-home option")
+		os.Exit(1)
+	}
+
+	p := path.Join(awsHome, ctx.String("file"))
+	fp := ExtractOptions{
+		credentialPath: p,
+		profile:        ctx.String("profile"),
+	}
+
 	m, err := fp.process()
 
 	if nil != err {
