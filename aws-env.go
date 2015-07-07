@@ -79,6 +79,17 @@ func buildCredentialsPath(awsHome, fileName string) string {
 	return path.Join(awsHome, fileName)
 }
 
+func processGlobalContext(ctx *cli.Context, handler func(map[string]string)) {
+	params := Params{ctx.GlobalString("aws-home"), ctx.GlobalString("file"), ctx.GlobalString("profile")}
+	m, err := process(params)
+
+	if nil != err {
+		log.Fatalln(err)
+	}
+
+	handler(m)
+}
+
 func process(params Params) (map[string]string, error) {
 	credentialPath := buildCredentialsPath(params.awsHome, params.fileName)
 
@@ -124,14 +135,9 @@ func CmdProcess(ctx *cli.Context) {
 func CmdGetAccessKey(ctx *cli.Context) {
 	defer exiting(entering("CmdGetAccess"))
 
-	params := Params{ctx.GlobalString("aws-home"), ctx.GlobalString("file"), ctx.GlobalString("profile")}
-	m, err := process(params)
-
-	if nil != err {
-		log.Fatalln(err)
-	}
-
-	fmt.Printf("%v\n", m["aws_access_key_id"])
+	processGlobalContext(ctx, func(m map[string]string) {
+		fmt.Println(m["aws_access_key_id"])
+	})
 }
 
 // CmdGetSecretKey will output the AWS secret access key from the profile of the specified
@@ -139,14 +145,9 @@ func CmdGetAccessKey(ctx *cli.Context) {
 func CmdGetSecretKey(ctx *cli.Context) {
 	defer exiting(entering("CmdGetSecretKey"))
 
-	params := Params{ctx.GlobalString("aws-home"), ctx.GlobalString("file"), ctx.GlobalString("profile")}
-	m, err := process(params)
-
-	if nil != err {
-		log.Fatalln(err)
-	}
-
-	fmt.Println(m["aws_secret_access_key"])
+	processGlobalContext(ctx, func(m map[string]string) {
+		fmt.Println(m["aws_secret_access_key"])
+	})
 }
 
 func main() {
