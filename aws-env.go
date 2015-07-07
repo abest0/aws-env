@@ -153,7 +153,7 @@ func CmdGetSecretKey(ctx *cli.Context) {
 func main() {
 	app := cli.NewApp()
 	app.Name = "aws-env"
-	app.Usage = "extract AWS Secret Key Id and Access Keys"
+	app.Usage = "extract AWS Access Key Id and Secret Access Key"
 	app.Flags = flags
 	app.Before = setup
 	app.Action = CmdProcess
