@@ -34,11 +34,21 @@ var flags = []cli.Flag{
 	},
 }
 
-// ExtractOptions are the options that will used to pull data out
+// Params are the options that will used to pull data out
 // out of the credentials file
-type ExtractOptions struct {
-	credentialPath string
-	profile        string
+type Params struct {
+	awsHome  string
+	fileName string
+	profile  string
+}
+
+func entering(n string) string {
+	log.Printf("Entering [%s]", n)
+	return n
+}
+
+func exiting(n string) {
+	log.Printf("Exiting [%s]", n)
 }
 
 func setup(ctx *cli.Context) error {
@@ -48,19 +58,30 @@ func setup(ctx *cli.Context) error {
 	return nil
 }
 
-func (exo *ExtractOptions) process() (map[string]string, error) {
+func buildCredentialsPath(awsHome, fileName string) string {
 
-	log.Printf("Inspecting file: %s\n", exo.credentialPath)
-	log.Printf("Extracting profile [%s]\n", exo.profile)
+	if "" == awsHome {
+		fmt.Fprintln(os.Stderr, "Environment variable [$AWS_HOME] is not set. Is the aws-cli installed? If not, install it or use --aws-home option")
+		os.Exit(1)
+	}
 
-	cfg, err := ini.Load(exo.credentialPath)
+	return path.Join(awsHome, fileName)
+}
+
+func process(params Params) (map[string]string, error) {
+	credentialPath := buildCredentialsPath(params.awsHome, params.fileName)
+
+	log.Printf("Inspecting file: %s\n", credentialPath)
+	log.Printf("Extracting profile [%s]\n", params.profile)
+
+	cfg, err := ini.Load(credentialPath)
 
 	if nil != err {
 		fmt.Println("An error occurred loading the file")
 		return nil, err
 	}
 
-	section, err := cfg.GetSection(exo.profile)
+	section, err := cfg.GetSection(params.profile)
 
 	if nil != err {
 		fmt.Println("An error occurred extracting the profile")
@@ -73,32 +94,17 @@ func (exo *ExtractOptions) process() (map[string]string, error) {
 // CmdProcess extracts the AWS Keys from the profile of the of the specified
 // credentials file.  These values will then be set as the environment vaiables
 func CmdProcess(ctx *cli.Context) {
-
-	awsHome := ctx.String("aws-home")
-	if "" == awsHome {
-		fmt.Fprintln(os.Stderr, "Environment variable [$AWS_HOME] is not set. Is the aws-cli installed? If not, install it or use --aws-home option")
-		os.Exit(1)
-	}
-
-	p := path.Join(awsHome, ctx.String("file"))
-	fp := ExtractOptions{
-		credentialPath: p,
-		profile:        ctx.String("profile"),
-	}
-
-	m, err := fp.process()
+	defer exiting(entering("CmdProcess"))
+	params := Params{ctx.String("aws-home"), ctx.String("file"), ctx.String("profile")}
+	m, err := process(params)
 
 	if nil != err {
-		log.Panic(err)
+		log.Fatalln(err)
 	}
 
 	for k, v := range m {
 		k := strings.ToUpper(k)
 		fmt.Printf("export %s=\"%v\"\n", k, v)
-		err := os.Setenv(k, v)
-		if nil != err {
-			log.Panic(err)
-		}
 	}
 }
 
