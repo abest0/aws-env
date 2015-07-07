@@ -34,6 +34,13 @@ var flags = []cli.Flag{
 	},
 }
 
+var subCommands = []cli.Command{
+	{
+		Name:   "access-key",
+		Usage:  "retrieve and output the AWS access key id",
+		Action: CmdGetAccessKey},
+}
+
 // Params are the options that will used to pull data out
 // out of the credentials file
 type Params struct {
@@ -108,6 +115,21 @@ func CmdProcess(ctx *cli.Context) {
 	}
 }
 
+// CmdGetAccessKey will output the AWS access key from the profile of the specified
+// credentials file.
+func CmdGetAccessKey(ctx *cli.Context) {
+	defer exiting(entering("CmdGetAccess"))
+
+	params := Params{ctx.GlobalString("aws-home"), ctx.GlobalString("file"), ctx.GlobalString("profile")}
+	m, err := process(params)
+
+	if nil != err {
+		log.Fatalln(err)
+	}
+
+	fmt.Printf("%v\n", m["aws_access_key_id"])
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "aws-env"
@@ -115,6 +137,7 @@ func main() {
 	app.Flags = flags
 	app.Before = setup
 	app.Action = CmdProcess
+	app.Commands = subCommands
 
 	app.Run(os.Args)
 }
