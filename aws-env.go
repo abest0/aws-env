@@ -15,7 +15,7 @@ import (
 var flags = []cli.Flag{
 	cli.BoolFlag{
 		Name:  "verbose",
-		Usage: "Display more output",
+		Usage: "display more output",
 	},
 	cli.StringFlag{
 		Name:  "f, file",
@@ -37,8 +37,12 @@ var flags = []cli.Flag{
 var subCommands = []cli.Command{
 	{
 		Name:   "access-key",
-		Usage:  "retrieve and output the AWS access key id",
+		Usage:  "retrieve and output the AWS access key id for the provided profile",
 		Action: CmdGetAccessKey},
+	{
+		Name:   "secret-key",
+		Usage:  "retrieve and output the AWS secret key for the provided profile",
+		Action: CmdGetSecretKey},
 }
 
 // Params are the options that will used to pull data out
@@ -128,6 +132,21 @@ func CmdGetAccessKey(ctx *cli.Context) {
 	}
 
 	fmt.Printf("%v\n", m["aws_access_key_id"])
+}
+
+// CmdGetSecretKey will output the AWS secret access key from the profile of the specified
+// credentials file
+func CmdGetSecretKey(ctx *cli.Context) {
+	defer exiting(entering("CmdGetSecretKey"))
+
+	params := Params{ctx.GlobalString("aws-home"), ctx.GlobalString("file"), ctx.GlobalString("profile")}
+	m, err := process(params)
+
+	if nil != err {
+		log.Fatalln(err)
+	}
+
+	fmt.Println(m["aws_secret_access_key"])
 }
 
 func main() {
